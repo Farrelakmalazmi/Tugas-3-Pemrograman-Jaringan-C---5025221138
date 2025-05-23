@@ -63,3 +63,14 @@ DELETE
 - GAGAL:
   - status: ERROR
   - data: pesan kesalahan
+
+UPLOAD <namafile> <data_base64>
+    Mengunggah file ke server.
+    File akan dikirim dalam bentuk string yang sudah di-encode dengan Base64.
+    Jika sukses, server akan membalas: {"status": "OK", "data": "upload berhasil"}
+    Jika gagal, server akan membalas: {"status": "ERROR", "data": "pesan error"}
+
+DELETE <namafile>
+    Menghapus file yang ada di server dengan nama <namafile>.
+    Jika sukses, server akan membalas: {"status": "OK", "data": "file terhapus"}
+    Jika gagal, server akan membalas: {"status": "ERROR", "data": "pesan error"}
