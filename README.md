@@ -69,8 +69,9 @@ DELETE
             return dict(status='ERROR', data=str(e))
 
 ```
-- upload: menerima nama file dan konten base64, lalu disimpan sebagai file baru.
-- delete: mengecek apakah file ada, lalu menghapusnya.
+Fungsi `upload(self, params=[])` digunakan untuk menangani proses unggah file dari client ke server. Fungsi ini menerima parameter berupa list params, di mana `params[0]` adalah nama file `(filename)` dan `params[1]` adalah data file yang telah di-encode dalam format Base64 `(filedata_base64)`. Data yang di-encode ini kemudian didekodekan kembali menjadi bentuk aslinya menggunakan base64.b64decode(), dan hasilnya disimpan ke dalam file baru dengan nama filename menggunakan mode tulis biner `('wb')`. Jika proses unggah berhasil, fungsi akan mengembalikan dictionary dengan status bernilai 'OK' dan pesan bahwa file berhasil diupload. Jika terjadi kesalahan selama proses, fungsi akan menangkap exception dan mengembalikan dictionary dengan status bernilai 'ERROR' beserta pesan kesalahannya.
+
+Fungsi `delete(self, params=[])` berfungsi untuk menghapus file yang telah disimpan di server. Fungsi ini juga menerima parameter berupa list params, di mana params[0] berisi nama file yang ingin dihapus. Fungsi terlebih dahulu mengecek apakah file tersebut ada di sistem menggunakan `os.path.exists()`. Jika file tidak ditemukan, maka fungsi akan mengembalikan dictionary dengan status bernilai `ERROR` dan pesan bahwa file tidak ditemukan. Namun jika file ada, maka file akan dihapus menggunakan os.remove(). Setelah penghapusan berhasil, fungsi akan mengembalikan dictionary dengan status bernilai 'OK' dan pesan bahwa file berhasil dihapus. Jika terjadi kesalahan selama proses, fungsi akan menangkap exception dan mengembalikan dictionary dengan status bernilai `ERROR` beserta detail pesan kesalahannya.
 
 ---
 ### Update  `file_protocol.py` agar mengenali perintah `UPLOAD` dan `DELETE`
@@ -92,7 +93,14 @@ class FileProtocol:
         except Exception as e:
             return json.dumps(dict(status='ERROR', data='request tidak dikenali'))
 ```
+Kelas  `FileProtocol` digunakan sebagai protokol penghubung antara perintah dalam bentuk string dan pemanggilan fungsi yang sesuai dalam antarmuka file `(FileInterface)`. Pada saat inisialisasi `(__init__)`, kelas ini membuat objek self.file yang merupakan instance dari kelas `FileInterface`, tempat fungsi-fungsi seperti upload, delete, dan lain-lain berada.
+
+Fungsi utama dalam kelas ini adalah `proses_string(self, string_datamasuk='')`, yang bertugas memproses input berupa string perintah. String tersebut terlebih dahulu dipisahkan menjadi token menggunakan `shlex.split()`, yang berguna agar string dengan spasi yang berada dalam tanda kutip tetap dianggap satu kesatuan. Token pertama (c[0]) dianggap sebagai nama metode (misalnya upload atau delete), lalu diubah menjadi huruf kecil dan dibersihkan dari spasi menggunakan `strip().lower()`. Token-token berikutnya (c[1:]) dijadikan sebagai parameter (params) yang akan diteruskan ke fungsi yang sesuai.
+
+Fungsi kemudian menggunakan `getattr(self.file, c_request)` untuk memanggil metode yang sesuai dari objek FileInterface berdasarkan nama yang diberikan. Metode tersebut kemudian dijalankan dengan params sebagai argumen. Hasil eksekusi akan dikembalikan dalam format JSON menggunakan `json.dumps()`. Jika terjadi kesalahan — misalnya perintah tidak dikenali atau tidak sesuai dengan metode yang ada di FileInterface — maka fungsi akan mengembalikan respon JSON dengan status 'ERROR' dan pesan 'request tidak dikenali'.
+
 ---
+
 ### Tambahkan fungsi `remote_upload()` dan `remote_delete()` di `file_client_cli.py`
 - Kita akan menambahkan dua fungsi baru di client:
 `remote_upload(namafile)` dan `remote_delete(namafile)`
@@ -128,6 +136,10 @@ def remote_delete(namafile=""):
     else:
         print("Gagal menghapus:", hasil['data'])
 ```
+Fungsi `remote_upload(namafile="")` digunakan oleh client untuk mengunggah file ke server. Fungsi ini pertama-tama membuka file lokal berdasarkan nama yang diberikan melalui parameter namafile, membaca seluruh isinya dalam mode `biner ('rb')`, kemudian mengenkripsi isi file tersebut ke dalam format `Base64` menggunakan `base64.b64encode()`. Hasil encoding tersebut diubah menjadi string UTF-8 agar dapat dikirim melalui jaringan. Setelah itu, fungsi menyusun perintah dalam bentuk string, dimulai dengan kata kunci UPLOAD, diikuti dengan nama file dan isi file yang telah di-encode, lalu dikirim ke server melalui fungsi `send_command()`. Jika server membalas dengan status 'OK', maka akan ditampilkan pesan bahwa file berhasil diunggah. Jika tidak, pesan kesalahan akan ditampilkan. Fungsi juga dilengkapi blok try-except untuk menangkap dan menampilkan pesan jika terjadi kesalahan seperti file tidak ditemukan atau gagal dibaca.
+
+Fungsi `remote_delete(namafile="")` digunakan untuk menghapus file yang sebelumnya telah diunggah ke server. Fungsi ini menyusun perintah dalam bentuk string dengan format `DELETE <namafile>` lalu mengirimkannya ke server melalui fungsi `send_command()`. Hasil respon dari server kemudian diperiksa. Jika status yang dikembalikan adalah 'OK', maka akan ditampilkan pesan bahwa file berhasil dihapus. Namun jika server mengembalikan status error, maka pesan kegagalan akan ditampilkan. Fungsi ini lebih sederhana karena tidak memproses isi file, melainkan hanya mengirimkan perintah berdasarkan nama file yang ingin dihapus.
+
 ---
 
 ### Update bagian if __name__ == '__main__':
